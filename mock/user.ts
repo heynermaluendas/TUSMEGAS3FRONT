@@ -29,73 +29,75 @@ const getAccess = () => {
 // 代码中会兼容本地 service mock 以及部署站点的静态数据
 export default {
   // 支持值为 Object 和 Array
-  'GET /api/currentUser': (req: Request, res: Response) => {
-    if (!getAccess()) {
-      res.status(401).send({
-        data: {
-          isLogin: false,
-        },
-        errorCode: '401',
-        errorMessage: '请先登录！',
-        success: true,
-      });
-      return;
-    }
-    res.send({
-      success: true,
+'GET /api/currentUser': (req: Request, res: Response) => {
+  // Verifica si el usuario está autenticado
+  if (!getAccess()) {
+    res.status(401).send({
       data: {
-        name: 'Oscar Maluendas',
-        avatar: 'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png',
-        userid: '00000001',
-        email: 'antdesign@alipay.com',
-        signature: '海纳百川，有容乃大',
-        title: '交互专家',
-        group: '蚂蚁金服－某某某事业群－某某平台部－某某技术部－UED',
-        tags: [
-          {
-            key: '0',
-            label: '很有想法的',
-          },
-          {
-            key: '1',
-            label: '专注设计',
-          },
-          {
-            key: '2',
-            label: '辣~',
-          },
-          {
-            key: '3',
-            label: '大长腿',
-          },
-          {
-            key: '4',
-            label: '川妹子',
-          },
-          {
-            key: '5',
-            label: '海纳百川',
-          },
-        ],
-        notifyCount: 12,
-        unreadCount: 11,
-        country: 'China',
-        access: getAccess(),
-        geographic: {
-          province: {
-            label: '浙江省',
-            key: '330000',
-          },
-          city: {
-            label: '杭州市',
-            key: '330100',
-          },
-        },
-        address: '西湖区工专路 77 号',
-        phone: '0752-268888888',
+        isLogin: true,
       },
+      errorCode: '401',
+      errorMessage: '请先登录！',
+      success: true,
     });
-  },
+    return;
+  }
+
+  // Recupera los datos del usuario desde localStorage
+  const storedUser = localStorage.getItem('currentUser');
+  
+  if (!storedUser) {
+    res.status(401).send({
+      data: null,
+      errorCode: '401',
+      errorMessage: 'Usuario no encontrado en localStorage',
+      success: false,
+    });
+    return;
+  }
+
+  // Parsear los datos del usuario desde JSON
+  const user = JSON.parse(storedUser);
+
+  // Responde con los datos del usuario
+  res.send({
+    success: true,
+    data: {
+      name: `${user.first_name} ${user.last_name}`,
+      avatar: 'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png', // Puedes cambiar este URL según el avatar del usuario
+      userid: user.id.toString(),
+      email: user.email,
+      signature: '海纳百川，有容乃大', // Puedes personalizar esto si lo necesitas
+      title: '交互专家', // Título, ajusta según sea necesario
+      group: '蚂蚁金服－某某某事业群－某某平台部－某某技术部－UED', // Puedes ajustarlo también si lo deseas
+      tags: [
+        { key: '0', label: '很有想法的' },
+        { key: '1', label: '专注设计' },
+        { key: '2', label: '辣~' },
+        { key: '3', label: '大长腿' },
+        { key: '4', label: '川妹子' },
+        { key: '5', label: '海纳百川' },
+      ],
+      notifyCount: 12,
+      unreadCount: 11,
+      country: 'China',
+      access: getAccess(),
+      geographic: {
+        province: {
+          label: '浙江省',
+          key: '330000',
+        },
+        city: {
+          label: '杭州市',
+          key: '330100',
+        },
+      },
+      address: '西湖区工专路 77 号',
+      phone: '0752-268888888',
+    },
+  });
+},
+
   // GET POST 可省略
   'GET /api/users': [
     {

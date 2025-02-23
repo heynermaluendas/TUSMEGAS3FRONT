@@ -11,10 +11,8 @@ import { errorConfig } from './requestErrorConfig';
 
 const isDev = process.env.NODE_ENV === 'development';
 const loginPath = '/user/login';
+const publicPaths = ['/user/login', '/DowloadFacturer']; // Agrega las rutas públicas
 
-/**
- * @see  https://umijs.org/zh-CN/plugins/plugin-initial-state
- * */
 export async function getInitialState(): Promise<{
   settings?: Partial<LayoutSettings>;
   currentUser?: API.CurrentUser;
@@ -28,13 +26,17 @@ export async function getInitialState(): Promise<{
       });
       return msg.data;
     } catch (error) {
-      history.push(loginPath);
+      // Solo redirigir si NO está en una ruta pública
+      if (!publicPaths.includes(history.location.pathname)) {
+        history.push(loginPath);
+      }
     }
     return undefined;
   };
-  // 如果不是登录页面，执行
+
+  // Si la ruta actual NO está en las rutas públicas, intenta obtener el usuario
   const { location } = history;
-  if (location.pathname !== loginPath) {
+  if (!publicPaths.includes(location.pathname)) {
     const currentUser = await fetchUserInfo();
     return {
       fetchUserInfo,
@@ -42,6 +44,7 @@ export async function getInitialState(): Promise<{
       settings: defaultSettings as Partial<LayoutSettings>,
     };
   }
+
   return {
     fetchUserInfo,
     settings: defaultSettings as Partial<LayoutSettings>,

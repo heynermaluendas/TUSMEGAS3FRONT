@@ -1,155 +1,109 @@
-import React, { useState, useEffect } from "react";
-import { Table, Button, Spin, message, Input } from "antd";
+import { useState, useEffect } from "react";
+import { Table, Spin, Alert, Input } from "antd";
 import axios from "axios";
-import { ConfigProvider } from 'antd';
-const Welcome = () => {
-  const [queues, setQueues] = useState([]);
-  const [filteredQueues, setFilteredQueues] = useState([]);
-  const [loading, setLoading] = useState(false);
+import config from "../config"; // ✅ Importación correcta
+
+const UsuariosSinId = () => {
+  const [usuarios, setUsuarios] = useState([]);
+  const [filteredUsuarios, setFilteredUsuarios] = useState([]); // Para la búsqueda
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchText, setSearchText] = useState("");
 
-  // Función para obtener las colas desde el backend
-  const fetchQueues = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get("http://localhost:5000/api/queues");
-      setQueues(response.data);
-      setFilteredQueues(response.data); // Set the filtered queues to the same initial data
-    } catch (error) {
-      message.error("Error al obtener las colas");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Función para bloquear un usuario
-  const blockUser = async (userId) => {
-    setLoading(true);
-    try {
-      await axios.post("http://localhost:5000/api/block_user", { user_id: userId });
-      message.success("Usuario bloqueado exitosamente");
-      fetchQueues(); // Refrescar las colas después de bloquear
-    } catch (error) {
-      message.error("Error al bloquear el usuario");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Función para desbloquear un usuario
-  const unblockUser = async (userId, comment) => {
-    setLoading(true);
-    try {
-      await axios.post("http://localhost:5000/api/unblock_user", { user_id: userId, comment });
-      message.success("Usuario desbloqueado exitosamente");
-      fetchQueues(); // Refrescar las colas después de desbloquear
-    } catch (error) {
-      message.error("Error al desbloquear el usuario");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Función para filtrar por nombre
-  const handleSearch = (value) => {
-    setSearchText(value);
-    if (value) {
-      const filtered = queues.filter((queue) =>
-        queue.name.toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredQueues(filtered);
-    } else {
-      setFilteredQueues(queues); // Si no hay texto en el campo de búsqueda, mostrar todas las colas
-    }
-  };
-
-  // useEffect para obtener las colas cuando el componente se monte
   useEffect(() => {
-    fetchQueues();
+    const fetchData = async () => {
+      try {
+        console.log("Obteniendo datos de MikroTik...");
+        const responseUsuarios = await axios.get(`${config.BaseUrl}/mikrotik/usuarios/`);
+        console.log("Respuesta MikroTik:", responseUsuarios.data);
+
+        const responseContratantes = await axios.get(`${config.BaseUrl}/contratantes/`);
+        console.log("Respuesta Contratantes:", responseContratantes.data);
+
+        // Asegurar que sean arrays válidos
+        const usuariosData = Array.isArray(responseUsuarios.data.usuarios) 
+          ? responseUsuarios.data.usuarios 
+          : [];
+
+        const contratantesData = Array.isArray(responseContratantes.data) 
+          ? responseContratantes.data 
+          : responseContratantes.data.data || [];
+
+        console.log("Usuarios MikroTik:", usuariosData);
+        console.log("Contratantes:", contratantesData);
+
+        // Extraer los IDs de contratantes en un Set para búsqueda rápida
+        const idsContratantes = new Set(
+          contratantesData
+            .map((c) => c.plan_contratado_mes_atrasado) // Extraemos los IDs de contratantes
+            .filter(Boolean) // Eliminamos valores vacíos o nulos
+        );
+
+        console.log("IDs de Contratantes:", idsContratantes);
+
+        // Filtrar usuarios de MikroTik cuyo ID NO esté en contratantes
+        const usuariosSinId = usuariosData.filter((usuario) => !idsContratantes.has(usuario[".id"]));
+
+        setUsuarios(usuariosSinId);
+        setFilteredUsuarios(usuariosSinId); // Inicializamos el estado filtrado
+      } catch (err) {
+        console.error("Error al cargar datos:", err);
+        setError(`Error al cargar los datos: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  // Configuración de columnas para la tabla
+  // Función de búsqueda
+  const handleSearch = (e) => {
+    const value = e.target.value.toLowerCase();
+    setSearchText(value);
+    const filtered = usuarios.filter(
+      (usuario) =>
+        usuario[".id"].toLowerCase().includes(value) || 
+        usuario.name.toLowerCase().includes(value)
+    );
+    setFilteredUsuarios(filtered);
+  };
+
   const columns = [
-    {
-      title: "Usuario",
-      dataIndex: "name",
-      key: "name",
-      sorter: (a, b) => a.name.localeCompare(b.name),
-    },
-    {
-      title: "Ancho de banda",
-      dataIndex: "max-limit",
-      key: "max-limit",
-      render: (text) => (
-        <span style={{ color: text === "1000/1000" ? "red" : "inherit" }}>{text}</span>
-      ),
-      // Habilitar ordenación en la columna de ancho de banda
-      sorter: (a, b) => {
-        const limitA = a["max-limit"].split("/")[0].replace("k", "") * 1;
-        const limitB = b["max-limit"].split("/")[0].replace("k", "") * 1;
-        return limitA - limitB;
-      },
-    },
-    {
-      title: "Acciones",
-      key: "actions",
-      render: (_, queue) => (
-        <>
-          <Button
-            type="primary"
-            danger
-            onClick={() => blockUser(queue[".id"])}
-            disabled={queue["max-limit"] === "1k/1k"}
-            style={{ marginRight: 8 }}
-          >
-            Bloquear
-          </Button>
-          <Button
-            type="primary"
-            style={{ backgroundColor: 'green', borderColor: 'green' }}
-            onClick={() => unblockUser(queue[".id"], queue.comment)}
-          >
-            Desbloquear
-          </Button>
-        </>
-      ),
-    },
+    { title: "ID MikroTik", dataIndex: ".id", key: ".id" },
+    { title: "Usuario", dataIndex: "name", key: "name" },
   ];
 
   return (
-    <ConfigProvider locale={{ locale: 'es_ES' }}> {/* Aquí se establece el idioma en español */}
     <div>
       
-      
-      {/* Campo de búsqueda */}
       <Input
-        placeholder="Buscar por nombre"
+        placeholder="Buscar por ID o Nombre..."
         value={searchText}
-        onChange={(e) => handleSearch(e.target.value)}
-        style={{ marginBottom: 20, width: 300 }}
+        onChange={handleSearch}
+        style={{ marginBottom: 10, minWidth: "50%" }}
       />
-      
+
+      {error && <Alert message={error} type="error" />}
       {loading ? (
-        <Spin tip="Cargando..." />
+        <Spin size="large" />
       ) : (
         <Table
-          dataSource={filteredQueues}
+          size="small"
+          dataSource={filteredUsuarios}
           columns={columns}
-          rowKey={(queue) => queue[".id"]}
-          pagination={{
-            pageSize: 150, // Número de filas por página
-            total: filteredQueues.length, // Total de elementos en la tabla
-            showSizeChanger: false, // Deshabilitar cambio de tamaño de página
-            pageSizeOptions: ['50'], // Solo permitir una opción de tamaño de página
-            current: 1, // Página inicial
-            showTotal: (total) => `Total ${total} usuarios`, // Mensaje total de elementos
+          rowKey=".id"
+          components={{
+            body: {
+              cell: ({ children }) => (
+                <td style={{ padding: "4px", fontSize: "12px" }}>{children}</td>
+              ),
+            },
           }}
-          scroll={{ y: 800 }} // Si la tabla es demasiado grande, se puede ajustar para mostrar el scroll
         />
       )}
     </div>
-  </ConfigProvider>
   );
 };
 
-export default Welcome;
+export default UsuariosSinId;

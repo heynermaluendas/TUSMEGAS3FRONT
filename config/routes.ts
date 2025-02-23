@@ -20,13 +20,31 @@ export default [
         path: '/user/login',
         component: './User/Login',
       },
+      
     ],
   },
   {
-    path: '/welcome',
-    name: 'welcome',
+    path: '/DowloadFacturer',
+    name: 'DowloadFacturer',
     icon: 'smile',
-    component: './Welcome',
+    layout: false,
+    component: './DowloadFacturer',
+  },
+  
+
+  {
+    path: '/Facturer',
+    name: 'Facturer',
+    icon: 'smile',
+    component: './Facturer',
+ 
+  },
+ 
+  {
+    path: '/EditContratante',
+    name: 'EditContratante',
+    icon: 'smile',
+    component: './EditContratante',
   },
   {
     path: '/admin',
@@ -45,12 +63,7 @@ export default [
       },
     ],
   },
-  // {
-  //   name: 'list.table-list',
-  //   icon: 'table',
-  //   path: '/list',
-  //   component: './TableList',
-  // },
+
   {
     path: '/',
     redirect: '/welcome',
