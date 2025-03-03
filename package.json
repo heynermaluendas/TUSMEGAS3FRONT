@@ -49,7 +49,7 @@
     "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.2",
-    "jspdf-autotable": "^3.8.4",
+    "jspdf-autotable": "^5.0.2",
     "jszip": "^3.10.1",
     "lodash.debounce": "^4.0.8",
     "pdfmake": "^0.2.18",
